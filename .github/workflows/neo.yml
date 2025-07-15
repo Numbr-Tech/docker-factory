@@ -1,9 +1,9 @@
 name: CI Neo
 on:
   push:
-    branches: [main,develop]
+    branches: [develop]
   schedule:
-    - cron: '50 7 * * 2'
+    - cron: '30 7 * * 0'
 
 permissions:
   id-token: write
