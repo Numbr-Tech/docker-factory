@@ -3,7 +3,7 @@ on:
   push:
     branches: [main,develop]
   schedule:
-    - cron: '40 7 * * 2'
+    - cron: '50 7 * * 2'
 
 permissions:
   id-token: write
