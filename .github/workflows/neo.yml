@@ -1,8 +1,9 @@
 name: CI Neo
 on:
-  workflow_dispatch:
   push:
-    branches: [develop]
+    branches: [main,develop]
+  schedule:
+    - cron: '40 7 * * 2'
 
 permissions:
   id-token: write
