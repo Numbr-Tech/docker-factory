@@ -1,0 +1,80 @@
+name: CI Neo
+on:
+  push:
+    branches: [main,develop]
+  schedule:
+    - cron: '50 7 * * 2'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  REGISTRY: nbtreg
+  FQDN: azurecr.io
+  DOCKERFILE_ROOT: apps
+  PROJECT: neo
+
+jobs:
+  build-push-neo-images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [api, orchestrator, planner]
+    steps:
+      - name: Generate JWT
+        id: generate_jwt
+        run: |
+          APP_ID=1560053
+          PRIVATE_KEY="${{ secrets.GH_APP_SECRET }}"
+          IAT=$(date +%s)
+          EXP=$((IAT + 540))
+          HEADER='{"alg":"RS256","typ":"JWT"}'
+          PAYLOAD="{\"iat\":$IAT,\"exp\":$EXP,\"iss\":$APP_ID}"
+          base64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+          ENCODED_HEADER=$(echo -n "$HEADER" | base64url)
+          ENCODED_PAYLOAD=$(echo -n "$PAYLOAD" | base64url)
+          SIGNATURE=$(echo -n "${ENCODED_HEADER}.${ENCODED_PAYLOAD}" | \
+            openssl dgst -sha256 -sign <(echo "$PRIVATE_KEY") | \
+            base64url)
+          JWT="${ENCODED_HEADER}.${ENCODED_PAYLOAD}.${SIGNATURE}"
+          echo "jwt=$JWT" >> $GITHUB_OUTPUT
+
+      - name: Get App Token
+        id: get_token
+        run: |
+          INSTALLATION_ID=75078289
+          TOKEN=$(curl -s -X POST \
+            -H "Authorization: Bearer ${{ steps.generate_jwt.outputs.jwt }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens | jq -r .token)
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Test GitHub token access to Neo
+        run: |
+          curl -s -H "Authorization: token ${{ steps.get_token.outputs.token }}" \
+              https://api.github.com/repos/Numbr-Tech/Neo
+
+      - name: Checkout Neo repo
+        uses: actions/checkout@v4
+        with:
+          repository: Numbr-Tech/Neo
+          token: ${{ steps.get_token.outputs.token }}
+
+      - name: Build and push image
+        run: |
+          docker build -t ${{ env.REGISTRY }}.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}:${{ github.ref_name }} ${{ env.DOCKERFILE_ROOT }}/${{ matrix.app }}
+
+      - name: Log in to Azure with federated credentials
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ env.REGISTRY }}
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REGISTRY }}.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}:${{ github.ref_name }}
