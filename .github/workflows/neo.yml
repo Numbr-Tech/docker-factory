@@ -59,6 +59,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Numbr-Tech/Neo
+          ref: feat/ADD-CI
           token: ${{ steps.get_token.outputs.token }}
 
       - name: Build and push image
