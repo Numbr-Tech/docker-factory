@@ -1,9 +1,9 @@
 name: CI Neo
 on:
   push:
-    branches: [main,develop]
+    branches: [main, develop]
   schedule:
-    - cron: '30 7 * * 0'
+    - cron: "30 7 * * 0"
 
 permissions:
   id-token: write
@@ -59,12 +59,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Numbr-Tech/Neo
-          ref: feat/ADD-CI
           token: ${{ steps.get_token.outputs.token }}
-
-      - name: Build and push image
+          ref: feat/ADD-CI
+          
+      - name: bazel build and push image
         run: |
-          docker build -t ${{ env.REGISTRY }}.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}:${{ github.ref_name }} ${{ env.DOCKERFILE_ROOT }}/${{ matrix.app }}
+          bazel run //apps/${{ matrix.app }}:${{ matrix.app }}_load
 
       - name: Log in to Azure with federated credentials
         uses: azure/login@v2
@@ -78,4 +78,4 @@ jobs:
 
       - name: Push Docker image
         run: |
-          docker push ${{ env.REGISTRY }}.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}:${{ github.ref_name }}
+          docker push ${{ env.REGISTRY }}.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}
