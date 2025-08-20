@@ -56,7 +56,7 @@ jobs:
         id: env_config
         run: |
           if [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
-            echo "registry=pprodnbtregistry-aucgecdkece6b5d7" >> $GITHUB_OUTPUT
+            echo "registry=pprodnbtregistry" >> $GITHUB_OUTPUT
             echo "subscription=${{ secrets.AZURE_SUBSCRIPTION_ID_PPROD }}" >> $GITHUB_OUTPUT
           else
             echo "registry=nbtreg" >> $GITHUB_OUTPUT
@@ -77,7 +77,11 @@ jobs:
       - name: Retag Bazel image for ACR push
         run: |
           SOURCE_IMAGE="${{ env.PROJECT }}-${{ matrix.app }}"
-          TARGET_IMAGE="${{ steps.env_config.outputs.registry }}.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}"
+          if [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
+            TARGET_IMAGE="${{ steps.env_config.outputs.registry }}-aucgecdkece6b5d7.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}"
+          else
+            TARGET_IMAGE="${{ steps.env_config.outputs.registry }}.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}"
+          fi
           echo "Retagging $SOURCE_IMAGE -> $TARGET_IMAGE"
           docker tag "$SOURCE_IMAGE" "$TARGET_IMAGE"
 
@@ -93,4 +97,8 @@ jobs:
 
       - name: Push Docker image
         run: |
-          docker push ${{ steps.env_config.outputs.registry }}.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}
+          if [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
+            docker push ${{ steps.env_config.outputs.registry }}-aucgecdkece6b5d7.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}
+          else
+            docker push ${{ steps.env_config.outputs.registry }}.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}
+          fi
