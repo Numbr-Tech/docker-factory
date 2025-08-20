@@ -97,3 +97,4 @@ jobs:
             docker push ${{ steps.env_config.outputs.registry }}.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}
           else
             docker push ${{ steps.env_config.outputs.registry }}-aucgecdkece6b5d7.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}
+          fi
