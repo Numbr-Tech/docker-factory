@@ -1,4 +1,4 @@
-name: CI Neo
+name: CI Neo frontend
 on:
   push:
     branches: [develop]
@@ -19,9 +19,8 @@ env:
 
 jobs:
   build-push-neo-images:
-    runs-on: ubuntu-latest
-    strategy:
-     steps:
+    runs-on: ubuntu-
+    steps: 
       - name: Generate JWT
         id: generate_jwt
         run: |
