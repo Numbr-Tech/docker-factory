@@ -19,7 +19,7 @@ env:
 
 jobs:
   build-push-neo-images:
-    runs-on: ubuntu-
+    runs-on: ubuntu-latest
     steps: 
       - name: Generate JWT
         id: generate_jwt
