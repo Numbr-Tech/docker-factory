@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: [api, orchestrator, planner]
+        app: [api, orchestrator, planner, agents]
     steps:
       - name: Generate JWT
         id: generate_jwt
