@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: [api, orchestrator, planner]
+        app: [api, orchestrator, planner, agents]
     steps:
       - name: Generate JWT
         id: generate_jwt
@@ -68,7 +68,7 @@ jobs:
         with:
           repository: Numbr-Tech/Neo
           token: ${{ steps.get_token.outputs.token }}
-          ref: feat/ADD-CI
+          ref: dev
 
       - name: bazel build and push image
         run: |
