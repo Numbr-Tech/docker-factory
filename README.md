@@ -33,7 +33,9 @@ Dans certains cas, les images Docker ne sont **pas génériques** ou ne sont pas
 - L’accès est sécurisé via une **GitHub App** et un **token d’installation dynamique** généré au runtime.
 - Cette méthode permet de centraliser la factory tout en gardant les projets modulaires et indépendants.
 
-> 🛠 Exemple : Le projet **Neo** utilise cette approche pour builder ses images depuis `Numbr-Tech/Neo`.
+> 🛠 Exemple : Le projet **Neo** utilise cette approche pour builder ses images depuis `Numbr-Tech/Neo`.  
+> ⚠️ _Note : Neo est un cas particulier — les images sont construites avec **Bazel** et non via `docker build`. La logique CI reste identique, mais le mécanisme de build diffère._
+
 
 ---
 
@@ -49,8 +51,10 @@ Les workflows s’exécutent :
 
 Les images Docker sont :
 - construites via `docker build`
-- taggées dynamiquement selon la branche
-- poussées vers un **Azure Container Registry (ACR)** dédié
+- taggées avec le tag `latest`
+- poussées vers un **Azure Container Registry (ACR)** en fonction de la branche :
+  - `main` → registre **de production**
+  - autres branches → registre **de préproduction**
 
 Chaque projet définit son propre matrix ou configuration dans son fichier.
 
