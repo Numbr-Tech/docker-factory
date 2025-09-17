@@ -135,7 +135,6 @@ jobs:
             role-to-assume: "arn:aws:iam::851725266353:role/neo_github_oidc_role"
             #role-session-name: ${{ inputs.aws-role-session-name }}
             role-session-name: "neo-backend-cd"
-            #aws-region: ${{ inputs.aws-region }}
             aws-region: "eu-central-1"
 
       - name: Login to Amazon ECR
