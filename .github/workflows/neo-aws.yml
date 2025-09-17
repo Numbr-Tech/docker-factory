@@ -112,7 +112,6 @@ jobs:
         run: |
           SOURCE_IMAGE="${{ env.PROJECT }}-${{ matrix.app }}"
           IMAGE_TAG="${{ matrix.arch }}-${{ github.sha }}"
-          docker tag $SOURCE_IMAGE
           base-tag= $SOURCE_IMAGE >> "$GITHUB_OUTPUT"
 
       # - name: Log in to Azure with federated credentials
@@ -147,6 +146,7 @@ jobs:
       #   run: .github/scripts/find-ecr-image.sh ${{ inputs.ecr-repository }} ${{ matrix.arch }}-${{ needs.set-vars.outputs.base-tag }}
 
   create-push-manifest:
+    needs: build-push-neo-images
     name: Push manifest for ${{ inputs.ecr-repository }}
     runs-on: ubuntu-latest
     defaults:
