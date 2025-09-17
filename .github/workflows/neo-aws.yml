@@ -14,7 +14,6 @@ permissions:
   contents: read
 
 env:
-  FQDN: azurecr.io
   DOCKERFILE_ROOT: apps
   PROJECT: neo
 
@@ -126,19 +125,6 @@ jobs:
 
 # - name: Push Docker image
 #   run: docker push ${{ env.TARGET_IMAGE }}
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-            #role-to-assume: ${{ inputs.aws-role-to-assume }}
-            role-to-assume: "arn:aws:iam::851725266353:role/neo_github_oidc_role"
-            #role-session-name: ${{ inputs.aws-role-session-name }}
-            role-session-name: "neo-backend-cd"
-            aws-region: "eu-central-1"
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
 
       # - name: Check if image already exists
       #   id: publish-required
