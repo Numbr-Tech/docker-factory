@@ -139,6 +139,9 @@ jobs:
         run:
             shell: bash
     steps:
+      - name: Debug - list image
+        run: |
+          docker image ls
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
