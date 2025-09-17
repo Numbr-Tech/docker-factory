@@ -84,17 +84,6 @@ jobs:
             https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens | jq -r .token)
           echo "token=$TOKEN" >> $GITHUB_OUTPUT
 
-      - name: Set environment-specific variables
-        id: env_config
-        run: |
-          if [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
-            echo "registry=pprodnbtregistry" >> $GITHUB_OUTPUT
-            echo "subscription=${{ secrets.AZURE_SUBSCRIPTION_ID_PPROD }}" >> $GITHUB_OUTPUT
-          else
-            echo "registry=nbtreg" >> $GITHUB_OUTPUT
-            echo "subscription=${{ secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_OUTPUT
-          fi
-
       - name: Checkout Neo repo
         uses: actions/checkout@v4
         with:
@@ -132,35 +121,33 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Create and push manifest
-        uses: Noelware/docker-manifest-action@0.4.3
+      - name: Push Bazel-built image
+        run: |
+          IMAGE_NAME="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+          docker tag bazel-output-image "$IMAGE_NAME"
+          docker push "$IMAGE_NAME"
         env:
-            ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-            #ECR_REPOSITORY: ${{ inputs.ecr-repository }}
-            ECR_REPOSITORY: "neo-api-docker"
-            BASE_TAG: ${{ needs.set-vars.outputs.base-tag }}
-        with:
-            inputs: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.BASE_TAG }}
-            images: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:amd-${{ env.BASE_TAG }},${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:arm-${{ env.BASE_TAG }}
-            push: true
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: "$SOURCE_IMAGE-docker"
+          IMAGE_TAG: ${{ matrix.arch }}
 
-      # - name: Log in to Azure with federated credentials
-      #   uses: azure/login@v2
+      # - name: Build and push image
+      #   uses: docker/build-push-action@v6
+      #   env:
+      #       ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      #       ECR_REPOSITORY: ${{ SOURCE_IMAGE }}-docker
+      #       IMAGE_TAG: ${{ matrix.arch }}-${{ needs.set-vars.outputs.base-tag }}
       #   with:
-      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
-      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-      #     subscription-id: ${{ steps.env_config.outputs.subscription }}
+      #       platforms: linux/${{ matrix.arch }}64
+      #       push: true
+      #       tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+      #       cache-from: type=gha,scope=${{ inputs.ecr-repository }}-${{ matrix.arch }}
+      #       cache-to: type=gha,mode=max,scope=${{ inputs.ecr-repository }}-${{ matrix.arch }}
+      #       provenance: false
+      #       build-args: ${{ inputs.docker-build-args }}
 
-      # - name: Log in to Azure Container Registry
-      #   run: az acr login --name ${{ steps.env_config.outputs.registry }}
 
-# - name: Push Docker image
-#   run: docker push ${{ env.TARGET_IMAGE }}
 
-      # - name: Check if image already exists
-      #   id: publish-required
-      #   continue-on-error: true
-      #   run: .github/scripts/find-ecr-image.sh ${{ inputs.ecr-repository }} ${{ matrix.arch }}-${{ needs.set-vars.outputs.base-tag }}
 
   # create-push-manifest:
   #   needs: build-push-neo-images
