@@ -108,27 +108,71 @@ jobs:
           bazel run //apps/${{ matrix.app }}:${{ matrix.app }}_load
 
       - name: Retag Bazel image for ACR push
+        id: set-tag
         run: |
           SOURCE_IMAGE="${{ env.PROJECT }}-${{ matrix.app }}"
           IMAGE_TAG="${{ matrix.arch }}-${{ github.sha }}"
-          if [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
-            TARGET_IMAGE="${{ steps.env_config.outputs.registry }}-aucgecdkece6b5d7.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}:${IMAGE_TAG}"
-          else
-            TARGET_IMAGE="${{ steps.env_config.outputs.registry }}.${{ env.FQDN }}/${{ env.PROJECT }}-${{ matrix.app }}:${IMAGE_TAG}"
-          fi
-          echo "Retagging $SOURCE_IMAGE -> $TARGET_IMAGE"
-          docker tag "$SOURCE_IMAGE" "$TARGET_IMAGE"
-          echo "TARGET_IMAGE=$TARGET_IMAGE" >> $GITHUB_ENV
+          docker tag $SOURCE_IMAGE
+          base-tag= $SOURCE_IMAGE >> "$GITHUB_OUTPUT"
 
-      - name: Log in to Azure with federated credentials
-        uses: azure/login@v2
+      # - name: Log in to Azure with federated credentials
+      #   uses: azure/login@v2
+      #   with:
+      #     client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ steps.env_config.outputs.subscription }}
+
+      # - name: Log in to Azure Container Registry
+      #   run: az acr login --name ${{ steps.env_config.outputs.registry }}
+
+# - name: Push Docker image
+#   run: docker push ${{ env.TARGET_IMAGE }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ steps.env_config.outputs.subscription }}
+            #role-to-assume: ${{ inputs.aws-role-to-assume }}
+            role-to-assume: "arn:aws:iam::851725266353:role/neo_github_oidc_role"
+            #role-session-name: ${{ inputs.aws-role-session-name }}
+            role-session-name: "neo-backend-cd"
+            #aws-region: ${{ inputs.aws-region }}
+            aws-region: "eu-central-1"
 
-      - name: Log in to Azure Container Registry
-        run: az acr login --name ${{ steps.env_config.outputs.registry }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Push Docker image
-        run: docker push ${{ env.TARGET_IMAGE }}
+      # - name: Check if image already exists
+      #   id: publish-required
+      #   continue-on-error: true
+      #   run: .github/scripts/find-ecr-image.sh ${{ inputs.ecr-repository }} ${{ matrix.arch }}-${{ needs.set-vars.outputs.base-tag }}
+
+  create-push-manifest:
+    name: Push manifest for ${{ inputs.ecr-repository }}
+    runs-on: ubuntu-latest
+    defaults:
+        run:
+            shell: bash
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+            role-to-assume: ${{ inputs.aws-role-to-assume }}
+            role-session-name: ${{ inputs.aws-role-session-name }}
+            aws-region: ${{ inputs.aws-region }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Create and push manifest
+        uses: Noelware/docker-manifest-action@0.4.3
+        env:
+            ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+            #ECR_REPOSITORY: ${{ inputs.ecr-repository }}
+            ECR_REPOSITORY: "neo-api-docker"
+            BASE_TAG: ${{ needs.set-vars.outputs.base-tag }}
+        with:
+            inputs: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.BASE_TAG }}
+            images: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:amd-${{ env.BASE_TAG }},${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:arm-${{ env.BASE_TAG }}
+            push: true
