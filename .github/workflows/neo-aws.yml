@@ -28,31 +28,31 @@ jobs:
             os: ubuntu-latest
           - app: api
             arch: arm
-            os: ubuntu-22.04-arm
+            os: ubuntu-latest-arm
           - app: orchestrator
             arch: amd
             os: ubuntu-latest
           - app: orchestrator
             arch: arm
-            os: ubuntu-22.04-arm
+            os: ubuntu-latest-arm
           - app: planner
             arch: amd
             os: ubuntu-latest
           - app: planner
             arch: arm
-            os: ubuntu-22.04-arm
+            os: ubuntu-latest-arm
           - app: agents
             arch: amd
             os: ubuntu-latest
           - app: agents
             arch: arm
-            os: ubuntu-22.04-arm
+            os: ubuntu-latest-arm
           - app: customer
             arch: amd
             os: ubuntu-latest
           - app: customer
             arch: arm
-            os: ubuntu-22.04-arm
+            os: ubuntu-latest-arm
 
     runs-on: ${{ matrix.os }}
 
