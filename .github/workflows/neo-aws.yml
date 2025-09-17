@@ -1,4 +1,4 @@
-name: CI Neo
+name: CI Neo AWS
 
 on:
   push:
