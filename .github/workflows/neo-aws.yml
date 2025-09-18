@@ -126,7 +126,7 @@ jobs:
       - name: Push Bazel-built image to ECR
         run: |
           IMAGE_NAME="${{ steps.login-ecr.outputs.registry }}/${{ env.SOURCE_IMAGE }}-docker:${{ env.IMAGE_TAG }}"
-          docker tag bazel-output-image "$IMAGE_NAME"
+          docker tag "${{ env.SOURCE_IMAGE }}" "$IMAGE_NAME"
           docker push "$IMAGE_NAME"
 
 
