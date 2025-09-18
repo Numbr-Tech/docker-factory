@@ -102,34 +102,33 @@ jobs:
           IMAGE_TAG="${{ matrix.arch }}-${{ github.sha }}"
           echo "base-tag=$SOURCE_IMAGE" >> "$GITHUB_OUTPUT"
 
-      - name: Debug - list image
+      - name: Set image variables
+        id: set-vars
         run: |
-          docker image ls
+          echo "SOURCE_IMAGE=${{ env.PROJECT }}-${{ matrix.app }}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${{ matrix.arch }}-${{ github.sha }}" >> "$GITHUB_ENV"
+
+      - name: Debug - list Docker images
+        run: docker image ls
+
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-            # role-to-assume: ${{ inputs.aws-role-to-assume }}
-            # role-session-name: ${{ inputs.aws-role-session-name }}
-            # aws-region: ${{ inputs.aws-region }}
-            #role-to-assume: ${{ inputs.aws-role-to-assume }}
-            role-to-assume: "arn:aws:iam::851725266353:role/neo_github_oidc_role"
-            #role-session-name: ${{ inputs.aws-role-session-name }}
-            role-session-name: "neo-backend-cd"
-            aws-region: "eu-central-1"
+          role-to-assume: "arn:aws:iam::851725266353:role/neo_github_oidc_role"
+          role-session-name: "neo-backend-cd"
+          aws-region: "eu-central-1"
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Push Bazel-built image
+ 
+      - name: Push Bazel-built image to ECR
         run: |
-          IMAGE_NAME="${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}"
-          docker tag bazel-output-image ${{ steps.set-tag.outputs.BASE_TAG}}
-          docker push ${{ steps.set-tag.outputs.BASE_TAG}}
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: "${{ steps.set-tag.outputs.BASE_TAG}}-docker"
-          IMAGE_TAG: ${{ matrix.arch }}
+          IMAGE_NAME="${{ steps.login-ecr.outputs.registry }}/${{ env.SOURCE_IMAGE }}-docker:${{ env.IMAGE_TAG }}"
+          docker tag bazel-output-image "$IMAGE_NAME"
+          docker push "$IMAGE_NAME"
+
 
       # - name: Build and push image
       #   uses: docker/build-push-action@v6
