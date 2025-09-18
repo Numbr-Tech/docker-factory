@@ -108,10 +108,6 @@ jobs:
           echo "SOURCE_IMAGE=${{ env.PROJECT }}-${{ matrix.app }}" >> "$GITHUB_ENV"
           echo "IMAGE_TAG=${{ matrix.arch }}-${{ github.sha }}" >> "$GITHUB_ENV"
 
-      - name: Debug - list Docker images
-        run: docker image ls
-
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -122,67 +118,47 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
- 
+
       - name: Push Bazel-built image to ECR
         run: |
           IMAGE_NAME="${{ steps.login-ecr.outputs.registry }}/${{ env.SOURCE_IMAGE }}-docker:${{ env.IMAGE_TAG }}"
           docker tag "${{ env.SOURCE_IMAGE }}" "$IMAGE_NAME"
           docker push "$IMAGE_NAME"
 
+  create-push-manifest:
+    name: Create and push Docker manifests
+    needs: build-push-neo-images
+    runs-on: ubuntu-latest
 
-      # - name: Build and push image
-      #   uses: docker/build-push-action@v6
-      #   env:
-      #       ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-      #       ECR_REPOSITORY: ${{ SOURCE_IMAGE }}-docker
-      #       IMAGE_TAG: ${{ matrix.arch }}-${{ needs.set-vars.outputs.base-tag }}
-      #   with:
-      #       platforms: linux/${{ matrix.arch }}64
-      #       push: true
-      #       tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-      #       cache-from: type=gha,scope=${{ inputs.ecr-repository }}-${{ matrix.arch }}
-      #       cache-to: type=gha,mode=max,scope=${{ inputs.ecr-repository }}-${{ matrix.arch }}
-      #       provenance: false
-      #       build-args: ${{ inputs.docker-build-args }}
+    strategy:
+      matrix:
+        app: [api, orchestrator, planner, agents, customer]
 
+    env:
+      PROJECT: neo
+      AWS_REGION: eu-central-1
 
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "arn:aws:iam::851725266353:role/neo_github_oidc_role"
+          role-session-name: "neo-backend-cd"
+          aws-region: ${{ env.AWS_REGION }}
 
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-  # create-push-manifest:
-  #   needs: build-push-neo-images
-  #   name: Push manifest for ${{ inputs.ecr-repository }}
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #       run:
-  #           shell: bash
-  #   steps:
-      # - name: Debug - list image
-      #   run: |
-      #     docker image ls
-      # - name: Configure AWS Credentials
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #       # role-to-assume: ${{ inputs.aws-role-to-assume }}
-      #       # role-session-name: ${{ inputs.aws-role-session-name }}
-      #       # aws-region: ${{ inputs.aws-region }}
-      #       #role-to-assume: ${{ inputs.aws-role-to-assume }}
-      #       role-to-assume: "arn:aws:iam::851725266353:role/neo_github_oidc_role"
-      #       #role-session-name: ${{ inputs.aws-role-session-name }}
-      #       role-session-name: "neo-backend-cd"
-      #       aws-region: "eu-central-1"
-
-      # - name: Login to Amazon ECR
-      #   id: login-ecr
-      #   uses: aws-actions/amazon-ecr-login@v2
-
-      # - name: Create and push manifest
-      #   uses: Noelware/docker-manifest-action@0.4.3
-      #   env:
-      #       ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-      #       #ECR_REPOSITORY: ${{ inputs.ecr-repository }}
-      #       ECR_REPOSITORY: "neo-api-docker"
-      #       BASE_TAG: ${{ needs.set-vars.outputs.base-tag }}
-      #   with:
-      #       inputs: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.BASE_TAG }}
-      #       images: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:amd-${{ env.BASE_TAG }},${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:arm-${{ env.BASE_TAG }}
-      #       push: true
+      - name: Create and push manifest with Noelware
+        uses: Noelware/docker-manifest-action@0.4.3
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.PROJECT }}-${{ matrix.app }}-docker
+          BASE_TAG: ${{ github.sha }}
+        with:
+          inputs: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.BASE_TAG }}
+          images: >-
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:amd-${{ env.BASE_TAG }},
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:arm-${{ env.BASE_TAG }}
+          push: true
