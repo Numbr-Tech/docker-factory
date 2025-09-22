@@ -15,9 +15,9 @@ permissions:
 env:
   AZURE_PROJECT: dashboard
   PROJECT_REPOSITORY: Numbr-Tech/cubber-dash
-  PROJECT_BRANCH: feat/deploy-container-app
-  INFRA_ENV: ${{ github.ref_name == 'develop' && 'staging' || 'prod' }}
+  PROJECT_BRANCH: ${{ github.ref_name == 'feat/dash' && 'feat/deploy-container-app' || 'main' }}
+  INFRA_ENV: ${{ github.ref_name == 'feat/dash' && 'staging' || 'prod' }}
 
 jobs:
   build-push-images:
-    uses: ./.github/workflows/templates/build-push-images.yml
+    uses: ./.github/workflows/_templates-build-push-images.yml
