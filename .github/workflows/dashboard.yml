@@ -19,8 +19,6 @@ env:
   REPOSITORY: Numbr-Tech/cubber-dash
   SUFFIX: ${{ github.ref_name == 'develop' && '-aucgecdkece6b5d7' || '' }}
   AZURE_REGISTRY: ${{ github.ref_name == 'develop' && 'pprodnbtregistry' || 'nbtreg' }}
-  AZURE_SUBSCRIPTION: ${{ github.ref_name == 'pprodnbtregistry' && "${{ secrets.AZURE_SUBSCRIPTION_ID_PPROD }}" || "{{ secrets.AZURE_SUBSCRIPTION_ID}}" }}
-
 
 jobs:
   build-push-images:
@@ -58,7 +56,7 @@ jobs:
         id: env_config
         run: |
           echo "registry=${{ env.AZURE_REGISTRY }}" >> $GITHUB_OUTPUT
-          echo "subscription=${{ env.AZURE_SUBSCRIPTION }}" >> $GITHUB_OUTPUT
+          echo "subscription=${{ github.ref_name == 'pprodnbtregistry' && secrets.AZURE_SUBSCRIPTION_ID_PPROD || secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_OUTPUT
 
       - name: Checkout repo
         uses: actions/checkout@v4
