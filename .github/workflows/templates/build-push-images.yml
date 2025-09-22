@@ -1,0 +1,65 @@
+jobs:
+  build-push-images:
+    variables:
+      FQDN: azurecr.io
+      DOCKERFILE_ROOT: apps
+      SUFFIX: ${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
+    steps: 
+      - name: Generate JWT
+        id: generate_jwt
+        run: |
+          APP_ID=1560053
+          PRIVATE_KEY="${{ secrets.GH_APP_SECRET }}"
+          IAT=$(date +%s)
+          EXP=$((IAT + 540))
+          HEADER='{"alg":"RS256","typ":"JWT"}'
+          PAYLOAD="{\"iat\":$IAT,\"exp\":$EXP,\"iss\":$APP_ID}"
+          base64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+          ENCODED_HEADER=$(echo -n "$HEADER" | base64url)
+          ENCODED_PAYLOAD=$(echo -n "$PAYLOAD" | base64url)
+          SIGNATURE=$(echo -n "${ENCODED_HEADER}.${ENCODED_PAYLOAD}" | \
+            openssl dgst -sha256 -sign <(echo "$PRIVATE_KEY") | \
+            base64url)
+          JWT="${ENCODED_HEADER}.${ENCODED_PAYLOAD}.${SIGNATURE}"
+          echo "jwt=$JWT" >> $GITHUB_OUTPUT
+
+      - name: Get App Token
+        id: get_token
+        run: |
+          INSTALLATION_ID=75078289
+          TOKEN=$(curl -s -X POST \
+            -H "Authorization: Bearer ${{ steps.generate_jwt.outputs.jwt }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens | jq -r .token)
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Set environment-specific variables
+        id: env_config
+        run: |
+          echo "registry=${{ env.INFRA_ENV == 'staging' && 'pprodnbtregistry' || 'nbtreg' }}" >> $GITHUB_OUTPUT
+          echo "subscription=${{ env.INFRA_ENV == 'staging' && secrets.AZURE_SUBSCRIPTION_ID_PPROD || secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_OUTPUT
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.PROJECT_REPOSITORY }}
+          token: ${{ steps.get_token.outputs.token }}
+          ref: ${{ env.PROJECT_BRANCH }}
+
+      - name: docker build image
+        run: |
+          docker build -t ${{ steps.env_config.outputs.registry }}${{ env.SUFFIX }}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }} .
+
+      - name: Log in to Azure with federated credentials
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ steps.env_config.outputs.subscription }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ steps.env_config.outputs.registry }}
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ steps.env_config.outputs.registry }}${{ env.SUFFIX }}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }}

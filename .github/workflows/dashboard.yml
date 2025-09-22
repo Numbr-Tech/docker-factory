@@ -20,4 +20,4 @@ env:
 
 jobs:
   build-push-images:
-    uses: ./.github/workflows/templates/build-push-template.yml
+    uses: ./.github/workflows/templates/build-push-images.yml
