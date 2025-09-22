@@ -48,7 +48,7 @@ jobs:
       - name: docker build image
         run: |
           SUFFIX=${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
-          docker build -t ${{ steps.env_config.outputs.registry }}${{ SUFFIX }}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }} .
+          docker build -t ${{ steps.env_config.outputs.registry }}${SUFFIX}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }} .
 
       - name: Log in to Azure with federated credentials
         uses: azure/login@v2
@@ -63,4 +63,4 @@ jobs:
       - name: Push Docker image
         run: |
           SUFFIX=${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
-          docker push ${{ steps.env_config.outputs.registry }}${{ SUFFIX }}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }}
+          docker push ${{ steps.env_config.outputs.registry }}${SUFFIX}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }}
