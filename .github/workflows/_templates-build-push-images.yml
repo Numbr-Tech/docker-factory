@@ -1,5 +1,6 @@
 jobs:
   build-push-images:
+    runs-on: ubuntu-latest
     env:
       FQDN: azurecr.io
       DOCKERFILE_ROOT: apps
