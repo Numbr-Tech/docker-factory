@@ -16,6 +16,11 @@ env:
   FQDN: azurecr.io
   DOCKERFILE_ROOT: apps
   PROJECT: dashboard
+  REPOSITORY: Numbr-Tech/cubber-dash
+  SUFFIX: ${{ github.ref_name == 'develop' && '-aucgecdkece6b5d7' || '' }}
+  AZURE_REGISTRY: ${{ github.ref_name == 'develop' && 'pprodnbtregistry' || 'nbtreg' }}
+  AZURE_SUBSCRIPTION: ${{ github.ref_name == 'pprodnbtregistry' && "${{ secrets.AZURE_SUBSCRIPTION_ID_PPROD }}" || "{{ secrets.AZURE_SUBSCRIPTION_ID}}" }}
+
 
 jobs:
   build-push-images:
@@ -52,28 +57,19 @@ jobs:
       - name: Set environment-specific variables
         id: env_config
         run: |
-          if [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
-            echo "registry=pprodnbtregistry" >> $GITHUB_OUTPUT
-            echo "subscription=${{ secrets.AZURE_SUBSCRIPTION_ID_PPROD }}" >> $GITHUB_OUTPUT
-          else
-            echo "registry=nbtreg" >> $GITHUB_OUTPUT
-            echo "subscription=${{ secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_OUTPUT
-          fi
+          echo "registry=${{ env.AZURE_REGISTRY }}" >> $GITHUB_OUTPUT
+          echo "subscription=${{ env.AZURE_SUBSCRIPTION }}" >> $GITHUB_OUTPUT
 
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          repository: Numbr-Tech/cubber-dash
+          repository: ${{ env.REPOSITORY }}
           token: ${{ steps.get_token.outputs.token }}
-          ref: feat/add-ci
+          ref: feat/deploy-container-app
 
       - name: docker build image
         run: |
-          if [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
-            docker build -t ${{ steps.env_config.outputs.registry }}-aucgecdkece6b5d7.${{ env.FQDN }}/${{ env.PROJECT }} .
-          else
-            docker build -t ${{ steps.env_config.outputs.registry }}.${{ env.FQDN }}/${{ env.PROJECT }} .
-          fi
+          docker build -t ${{ steps.env_config.outputs.registry }}${{ env.SUFFIX }}.${{ env.FQDN }}/${{ env.PROJECT }} .
 
       - name: Log in to Azure with federated credentials
         uses: azure/login@v2
@@ -87,8 +83,4 @@ jobs:
 
       - name: Push Docker image
         run: |
-          if [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
-            docker push ${{ steps.env_config.outputs.registry }}-aucgecdkece6b5d7.${{ env.FQDN }}/${{ env.PROJECT }}
-          else
-            docker push ${{ steps.env_config.outputs.registry }}.${{ env.FQDN }}/${{ env.PROJECT }}
-          fi
+          docker push ${{ steps.env_config.outputs.registry }}${SUFFIX}.${{ env.FQDN }}/${{ env.PROJECT }}
