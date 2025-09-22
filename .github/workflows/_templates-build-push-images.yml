@@ -3,7 +3,6 @@ jobs:
     env:
       FQDN: azurecr.io
       DOCKERFILE_ROOT: apps
-      SUFFIX: ${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
     steps: 
       - name: Generate JWT
         id: generate_jwt
@@ -48,7 +47,8 @@ jobs:
 
       - name: docker build image
         run: |
-          docker build -t ${{ steps.env_config.outputs.registry }}${{ env.SUFFIX }}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }} .
+          SUFFIX=${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
+          docker build -t ${{ steps.env_config.outputs.registry }}${{ SUFFIX }}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }} .
 
       - name: Log in to Azure with federated credentials
         uses: azure/login@v2
@@ -62,4 +62,5 @@ jobs:
 
       - name: Push Docker image
         run: |
-          docker push ${{ steps.env_config.outputs.registry }}${{ env.SUFFIX }}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }}
+          SUFFIX=${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
+          docker push ${{ steps.env_config.outputs.registry }}${{ SUFFIX }}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }}
