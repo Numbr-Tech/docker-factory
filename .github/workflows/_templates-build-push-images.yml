@@ -1,6 +1,6 @@
 jobs:
   build-push-images:
-    variables:
+    env:
       FQDN: azurecr.io
       DOCKERFILE_ROOT: apps
       SUFFIX: ${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
