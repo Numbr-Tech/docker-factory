@@ -56,8 +56,11 @@ jobs:
       - name: Set environment-specific variables
         id: env_config
         run: |
-          echo "registry=${{ env.INFRA_ENV == 'staging' && 'pprodnbtregistry' || 'nbtreg' }}" >> $GITHUB_OUTPUT
+          registry=${{ env.INFRA_ENV == 'staging' && 'pprodnbtregistry' || 'nbtreg' }}
+          suffix=${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
+          echo "registry=$registry" >> $GITHUB_OUTPUT
           echo "subscription=${{ env.INFRA_ENV == 'staging' && secrets.AZURE_SUBSCRIPTION_ID_PPROD || secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_OUTPUT
+          echo "image_path=${registry}${suffix}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }}" >> $GITHUB_OUTPUT
 
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -68,8 +71,7 @@ jobs:
 
       - name: docker build image
         run: |
-          SUFFIX=${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
-          docker build -t ${{ steps.env_config.outputs.registry }}${SUFFIX}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }} .
+          docker build -t ${{ steps.env_config.outputs.image_path }} .
 
       - name: Log in to Azure with federated credentials
         uses: azure/login@v2
@@ -83,6 +85,4 @@ jobs:
 
       - name: Push Docker image
         run: |
-          SUFFIX=${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
-          docker push ${{ steps.env_config.outputs.registry }}${SUFFIX}.${{ env.FQDN }}/${{ env.AZURE_PROJECT }}
-
+          docker push ${{ steps.env_config.outputs.image_path }}
