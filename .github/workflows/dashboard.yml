@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  AZURE_PROJECT: dashboard
+  AZURE_PROJECT: cubber-dash
   PROJECT_REPOSITORY: Numbr-Tech/cubber-dash
   PROJECT_BRANCH: ${{ github.ref_name == 'feat/dash' && 'feat/deploy-container-app' || 'main' }}
   INFRA_ENV: ${{ github.ref_name == 'feat/dash' && 'staging' || 'prod' }}
