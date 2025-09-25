@@ -84,10 +84,6 @@ jobs:
           echo "IMAGE_PATH=${FQDN}/${{ inputs.project_name }}:${COMMIT_HASH}" >> $GITHUB_OUTPUT
           echo "SUBSCRIPTION_ID=$SUBSCRIPTION_ID" >> $GITHUB_OUTPUT
 
-      - name: docker build image
-        run: |
-          docker build -t ${{ steps.env_config.outputs.IMAGE_PATH }} .
-
       - name: Log in to Azure with federated credentials
         uses: azure/login@v2
         with:
@@ -100,4 +96,5 @@ jobs:
 
       - name: Push Docker image
         run: |
+          docker build -t ${{ steps.env_config.outputs.IMAGE_PATH }} .
           docker push ${{ steps.env_config.outputs.IMAGE_PATH }}
