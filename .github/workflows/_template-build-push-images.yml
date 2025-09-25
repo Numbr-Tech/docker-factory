@@ -15,6 +15,11 @@ on:
         description: 'Infrastructure environment (prod/staging)'
         required: true
         type: string
+      debug:
+        description: 'Enable debug mode (verbose logs)'
+        required: false
+        type: boolean
+        default: false
     secrets:
       GH_APP_SECRET:
         description: 'GitHub App private key'
@@ -94,7 +99,7 @@ jobs:
       - name: Log in to Azure Container Registry
         run: az acr login --name ${{ steps.env_config.outputs.REGISTRY }}
 
-      - name: Push Docker image
+      - name: Build and Push Docker image
         run: |
-          docker build -t ${{ steps.env_config.outputs.IMAGE_PATH }} .
+          docker build -t ${{ steps.env_config.outputs.IMAGE_PATH }} . ${{ inputs.debug == 'true' && '' || '--quiet' }}
           docker push ${{ steps.env_config.outputs.IMAGE_PATH }}
