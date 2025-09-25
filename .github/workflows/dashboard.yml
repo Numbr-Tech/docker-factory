@@ -65,8 +65,9 @@ jobs:
           REGISTRY=${{ env.INFRA_ENV == 'staging' && 'pprodnbtregistry' || 'nbtreg' }}
           SUFFIX=${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
           FQDN=${REGISTRY}${SUFFIX}.azurecr.io
+          COMMIT_HASH=$(git rev-parse HEAD)
           echo "REGISTRY=$REGISTRY" >> $GITHUB_OUTPUT
-          echo "IMAGE_PATH=${FQDN}/${{ env.AZURE_PROJECT }}:${{ steps.checkout.outputs.sha }}" >> $GITHUB_OUTPUT
+          echo "IMAGE_PATH=${FQDN}/${{ env.AZURE_PROJECT }}:${COMMIT_HASH}" >> $GITHUB_OUTPUT
 
       - name: docker build image
         run: |
