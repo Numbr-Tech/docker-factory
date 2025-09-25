@@ -17,7 +17,6 @@ env:
   GIT_REPOSITORY: Numbr-Tech/cubber-dash
   GIT_BRANCH: ${{ github.ref_name == 'main' && 'main' || 'feat/deploy-container-app' }}
   INFRA_ENV: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
-  SUBSCRIPTION_ID: ${{ github.ref_name == 'main' && secrets.AZURE_SUBSCRIPTION_ID_PPROD || secrets.AZURE_SUBSCRIPTION_ID }}
 
 jobs:
   build-push-images:
@@ -64,10 +63,12 @@ jobs:
         run: |
           REGISTRY=${{ env.INFRA_ENV == 'staging' && 'pprodnbtregistry' || 'nbtreg' }}
           SUFFIX=${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
+          SUBSCRIPTION_ID=${{ env.INFRA_ENV == 'staging' && secrets.AZURE_SUBSCRIPTION_ID_PPROD || secrets.AZURE_SUBSCRIPTION_ID }}
           FQDN=${REGISTRY}${SUFFIX}.azurecr.io
           COMMIT_HASH=$(git rev-parse HEAD)
           echo "REGISTRY=$REGISTRY" >> $GITHUB_OUTPUT
           echo "IMAGE_PATH=${FQDN}/${{ env.AZURE_PROJECT }}:${COMMIT_HASH}" >> $GITHUB_OUTPUT
+          echo "SUBSCRIPTION_ID=$SUBSCRIPTION_ID" >> $GITHUB_OUTPUT
 
       - name: docker build image
         run: |
@@ -78,7 +79,7 @@ jobs:
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ env.SUBSCRIPTION_ID }}
+          subscription-id: ${{ steps.env_config.outputs.SUBSCRIPTION_ID }}
 
       - name: Log in to Azure Container Registry
         run: az acr login --name ${{ steps.env_config.outputs.REGISTRY }}
