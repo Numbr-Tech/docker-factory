@@ -1,0 +1,103 @@
+name: Build and Push Docker Images
+
+on:
+  workflow_call:
+    inputs:
+      project_name:
+        description: 'Project name'
+        required: true
+        type: string
+      git_branch:
+        description: 'Git branch to checkout'
+        required: true
+        type: string
+      infra_env:
+        description: 'Infrastructure environment (prod/staging)'
+        required: true
+        type: string
+    secrets:
+      GH_APP_SECRET:
+        description: 'GitHub App private key'
+        required: true
+      AZURE_CLIENT_ID:
+        description: 'Azure client ID'
+        required: true
+      AZURE_TENANT_ID:
+        description: 'Azure tenant ID'
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        description: 'Azure subscription ID for staging'
+        required: true
+      AZURE_SUBSCRIPTION_ID_PPROD:
+        description: 'Azure subscription ID for production'
+        required: true
+
+jobs:
+  build-push-images:
+    runs-on: ubuntu-latest
+    steps: 
+      - name: Generate JWT
+        id: generate_jwt
+        run: |
+          APP_ID=1560053
+          PRIVATE_KEY="${{ secrets.GH_APP_SECRET }}"
+          IAT=$(date +%s)
+          EXP=$((IAT + 540))
+          HEADER='{"alg":"RS256","typ":"JWT"}'
+          PAYLOAD="{\"iat\":$IAT,\"exp\":$EXP,\"iss\":$APP_ID}"
+          base64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+          ENCODED_HEADER=$(echo -n "$HEADER" | base64url)
+          ENCODED_PAYLOAD=$(echo -n "$PAYLOAD" | base64url)
+          SIGNATURE=$(echo -n "${ENCODED_HEADER}.${ENCODED_PAYLOAD}" | \
+            openssl dgst -sha256 -sign <(echo "$PRIVATE_KEY") | \
+            base64url)
+          JWT="${ENCODED_HEADER}.${ENCODED_PAYLOAD}.${SIGNATURE}"
+          echo "jwt=$JWT" >> $GITHUB_OUTPUT
+
+      - name: Get App Token
+        id: get_token
+        run: |
+          INSTALLATION_ID=75078289
+          TOKEN=$(curl -s -X POST \
+            -H "Authorization: Bearer ${{ steps.generate_jwt.outputs.jwt }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens | jq -r .token)
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Checkout repo
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          repository: Numbr-Tech/cubber-dash
+          token: ${{ steps.get_token.outputs.token }}
+          ref: ${{ inputs.git_branch }}
+
+      - name: Set environment-specific variables
+        id: env_config
+        run: |
+          REGISTRY=${{ inputs.infra_env == 'staging' && 'pprodnbtregistry' || 'nbtreg' }}
+          SUFFIX=${{ inputs.infra_env == 'staging' && '-aucgecdkece6b5d7' || '' }}
+          SUBSCRIPTION_ID=${{ inputs.infra_env == 'staging' && secrets.AZURE_SUBSCRIPTION_ID_PPROD || secrets.AZURE_SUBSCRIPTION_ID }}
+          FQDN=${REGISTRY}${SUFFIX}.azurecr.io
+          COMMIT_HASH=$(git rev-parse HEAD)
+          echo "REGISTRY=$REGISTRY" >> $GITHUB_OUTPUT
+          echo "IMAGE_PATH=${FQDN}/${{ inputs.project_name }}:${COMMIT_HASH}" >> $GITHUB_OUTPUT
+          echo "SUBSCRIPTION_ID=$SUBSCRIPTION_ID" >> $GITHUB_OUTPUT
+
+      - name: docker build image
+        run: |
+          docker build -t ${{ steps.env_config.outputs.IMAGE_PATH }} .
+
+      - name: Log in to Azure with federated credentials
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ steps.env_config.outputs.SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ steps.env_config.outputs.REGISTRY }}
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ steps.env_config.outputs.IMAGE_PATH }}
