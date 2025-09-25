@@ -51,6 +51,14 @@ jobs:
             https://api.github.com/app/installations/$INSTALLATION_ID/access_tokens | jq -r .token)
           echo "token=$TOKEN" >> $GITHUB_OUTPUT
 
+      - name: Checkout repo
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GIT_REPOSITORY }}
+          token: ${{ steps.get_token.outputs.token }}
+          ref: ${{ env.GIT_BRANCH }}
+
       - name: Set environment-specific variables
         id: env_config
         run: |
@@ -58,14 +66,7 @@ jobs:
           SUFFIX=${{ env.INFRA_ENV == 'staging' && '-aucgecdkece6b5d7' || '' }}
           FQDN=${REGISTRY}${SUFFIX}.azurecr.io
           echo "REGISTRY=$REGISTRY" >> $GITHUB_OUTPUT
-          echo "IMAGE_PATH=${FQDN}/${{ env.AZURE_PROJECT }}:${{ env.GIT_BRANCH }}" >> $GITHUB_OUTPUT
-
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.GIT_REPOSITORY }}
-          token: ${{ steps.get_token.outputs.token }}
-          ref: ${{ env.GIT_BRANCH }}
+          echo "IMAGE_PATH=${FQDN}/${{ env.AZURE_PROJECT }}:${{ steps.checkout.outputs.sha }}" >> $GITHUB_OUTPUT
 
       - name: docker build image
         run: |
