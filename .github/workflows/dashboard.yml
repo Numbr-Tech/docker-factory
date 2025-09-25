@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build-push-images:
-    uses: ./.github/workflows/_templates-build-push-images.yml
+    uses: ./.github/workflows/_template-build-push-images.yml
     with:
       project_name: cubber-dash
       git_branch: ${{ github.ref_name == 'main' && 'main' || 'feat/deploy-container-app' }}
