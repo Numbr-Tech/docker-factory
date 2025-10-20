@@ -126,7 +126,7 @@ jobs:
 
     strategy:
       matrix:
-        app: [api, orchestrator, planner, agents, customer]
+        app: [api, orchestrator, planner, core]
 
     env:
       PROJECT: neo
