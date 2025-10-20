@@ -40,16 +40,10 @@ jobs:
           - app: planner
             arch: arm
             os: ubuntu-latest-arm
-          - app: agents
+          - app: core
             arch: amd
             os: ubuntu-latest
-          - app: agents
-            arch: arm
-            os: ubuntu-latest-arm
-          - app: customer
-            arch: amd
-            os: ubuntu-latest
-          - app: customer
+          - app: core
             arch: arm
             os: ubuntu-latest-arm
 
