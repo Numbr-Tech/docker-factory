@@ -65,7 +65,7 @@ jobs:
         with:
           repository: Numbr-Tech/Neo-app
           token: ${{ steps.get_token.outputs.token }}
-          ref: feat/dev
+          ref: dev
 
       - name: docker build image
         run: |
