@@ -1,0 +1,98 @@
+name: Build and Push Multi-Arch Docker Images
+
+on:
+  workflow_call:
+    inputs:
+      OS-AMD:
+        type: string
+        default: "ubuntu-latest"
+      OS-ARM:
+        type: string
+        default: "ubuntu-latest-arm"
+      DOCKER_TAG:
+        type: string
+        default: "${{ github.sha }}"
+      VERSION:
+        type: string
+        default: "${{ github.sha }}"
+      DOCKER_FILE_DIRECTORY:
+        type: string
+        required: true
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID_PROD:
+        required: true
+      AZURE_SUBSCRIPTION_ID_PPROD:
+        required: true
+
+jobs:
+  set-vars:
+    runs-on: ubuntu-latest
+    outputs:
+      base-tag: ${{ steps.set-tag.outputs.base-tag }}
+    steps:
+      - name: Define Docker tag
+        id: set-tag
+        run: |
+          echo "base-tag=${{ inputs.DOCKER_TAG }}" >> "$GITHUB_OUTPUT"
+
+  env-config:
+    runs-on: ubuntu-latest
+    outputs:
+      registry: ${{ steps.set-env.outputs.registry }}
+      subscription: ${{ steps.set-env.outputs.subscription }}
+    steps:
+      - name: Set registry and subscription
+        id: set-env
+        run: |
+          echo "registry=${{ github.ref_name == 'main' && 'nbtreg' || 'pprodnbtregistry-aucgecdkece6b5d7' }}" >> "$GITHUB_OUTPUT"
+          echo "subscription=${{ github.ref_name == 'main' && secrets.AZURE_SUBSCRIPTION_ID_PROD || secrets.AZURE_SUBSCRIPTION_ID_PPROD }}" >> "$GITHUB_OUTPUT"
+
+  build-push-images:
+    needs: [set-vars, env-config]
+    strategy:
+      matrix:
+        include:
+          - os: ${{ inputs.OS-AMD }}
+            arch: amd
+          - os: ${{ inputs.OS-ARM }}
+            arch: arm
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ needs.env-config.outputs.subscription }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ needs.env-config.outputs.registry }}
+
+      - name: Build and push image
+        env:
+          IMAGE_PATH: ${{ needs.env-config.outputs.registry }}.azurecr.io/neo-backend:${{ matrix.arch }}-${{ needs.set-vars.outputs.base-tag }}
+        run: |
+          docker build -t $IMAGE_PATH -f ${{ inputs.DOCKER_FILE_DIRECTORY }}/Dockerfile-${{ matrix.arch }} ${{ inputs.DOCKER_FILE_DIRECTORY }}
+          docker push $IMAGE_PATH
+
+  create-push-manifest:
+    needs: [set-vars, env-config, build-push-images]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create and push Docker manifest
+        env:
+          REGISTRY: ${{ needs.env-config.outputs.registry }}.azurecr.io
+          BASE_TAG: ${{ needs.set-vars.outputs.base-tag }}
+        run: |
+          docker manifest create $REGISTRY/neo-backend:$BASE_TAG \
+            $REGISTRY/neo-backend:amd-$BASE_TAG \
+            $REGISTRY/neo-backend:arm-$BASE_TAG
+
+          docker manifest push $REGISTRY/neo-backend:$BASE_TAG
