@@ -6,9 +6,6 @@ on:
       project:
         required: true
         type: string
-      aws-role:
-        required: true
-        type: string
       aws-region:
         required: true
         type: string
