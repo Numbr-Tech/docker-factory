@@ -1,0 +1,118 @@
+name: Build bazel images module
+
+on:
+  workflow_call:
+    inputs:
+      project:
+        required: true
+        type: string
+      aws-role:
+        required: true
+        type: string
+      aws-region:
+        required: true
+        type: string
+    secrets:
+      aws-oidc-role:
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-push-neo-images:
+    strategy:
+      matrix:
+        include:
+          - app: api
+            arch: amd
+            os: ubuntu-latest
+          - app: api
+            arch: arm
+            os: ubuntu-latest-arm
+          - app: orchestrator
+            arch: amd
+            os: ubuntu-latest
+          - app: orchestrator
+            arch: arm
+            os: ubuntu-latest-arm
+          - app: planner
+            arch: amd
+            os: ubuntu-latest
+          - app: planner
+            arch: arm
+            os: ubuntu-latest-arm
+          - app: core
+            arch: amd
+            os: ubuntu-latest
+          - app: core
+            arch: arm
+            os: ubuntu-latest-arm
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      - name: Bazel build image
+        run: |
+          bazel run //apps/${{ matrix.app }}:${{ matrix.app }}_load
+
+      - name: Set image variables
+        id: set-vars
+        run: |
+          echo "SOURCE_IMAGE=${{ inputs.project }}-${{ matrix.app }}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${{ matrix.arch }}-${{ github.sha }}" >> "$GITHUB_ENV"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.aws-oidc-role }}
+          role-session-name: "neo-backend-cd"
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Push Bazel-built image to ECR
+        run: |
+          IMAGE_NAME="${{ steps.login-ecr.outputs.registry }}/${{ env.SOURCE_IMAGE }}-docker:${{ env.IMAGE_TAG }}"
+          docker tag "${{ env.SOURCE_IMAGE }}" "$IMAGE_NAME"
+          docker push "$IMAGE_NAME"
+
+  create-push-manifest:
+    name: Create and push Docker manifests
+    needs: build-push-neo-images
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        app: [api, orchestrator, planner, core]
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.aws-oidc-role }}
+          role-session-name: "neo-backend-cd"
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Create and push manifest with Noelware
+        uses: Noelware/docker-manifest-action@0.4.3
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ inputs.project }}-${{ matrix.app }}-docker
+          BASE_TAG: ${{ github.sha }}
+        with:
+          inputs: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.BASE_TAG }}
+          images: >-
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:amd-${{ env.BASE_TAG }},
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:arm-${{ env.BASE_TAG }}
+          push: true
