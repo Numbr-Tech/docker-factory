@@ -28,18 +28,6 @@ jobs:
           - app: api
             arch: arm
             os: ubuntu-latest-arm
-          - app: orchestrator
-            arch: amd
-            os: ubuntu-latest
-          - app: orchestrator
-            arch: arm
-            os: ubuntu-latest-arm
-          - app: planner
-            arch: amd
-            os: ubuntu-latest
-          - app: planner
-            arch: arm
-            os: ubuntu-latest-arm
           - app: core
             arch: amd
             os: ubuntu-latest
@@ -87,7 +75,7 @@ jobs:
 
     strategy:
       matrix:
-        app: [api, orchestrator, planner, core]
+        app: [api, core]
 
     steps:
       - name: Configure AWS Credentials
