@@ -1,0 +1,28 @@
+name: CI Dashboard
+on:
+  push:
+    branches: [develop, feat/dash]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "30 7 * * 0"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-push-images:
+    uses: ./.github/workflows/_template-build-push-images.yml
+    with:
+      project_name: cubber-dash
+      git_branch: ${{ github.ref_name == 'main' && 'main' || 'feat/deploy-container-app' }}
+      infra_env: ${{ github.ref_name == 'main' && 'prod' || 'staging' }}
+      debug: false
+    secrets:
+      GH_APP_SECRET: ${{ secrets.GH_APP_SECRET }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_SUBSCRIPTION_ID_PPROD: ${{ secrets.AZURE_SUBSCRIPTION_ID_PPROD }}
