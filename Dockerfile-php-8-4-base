@@ -8,6 +8,8 @@ RUN apt-get update && \
     zip \
     vim \
     git \
+    gnupg2 \
+    curl \
     libicu-dev \
     libxml2-dev \
     libzip-dev \
