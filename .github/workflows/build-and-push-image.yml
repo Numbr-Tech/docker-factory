@@ -1,9 +1,7 @@
 name: build-and-push-image
 on:
   push:
-    branches: [develop, feat/php-8-4-base]
-  pull_request:
-    branches: [main]
+    branches: [develop, main]
   workflow_dispatch:
 
 permissions:
