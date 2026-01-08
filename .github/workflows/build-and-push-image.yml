@@ -10,7 +10,7 @@ permissions:
 
 env:
   AZURE_REGISTER_NAME: "${{ github.ref_name == 'main' && 'nbtreg' || 'pprodnbtregistry' }}"
-  AZURE_REGISTER_SUFFIX: "${{ github.ref_name == 'main' && '' || '-aucgecdkece6b5d7' }}"
+  AZURE_REGISTER_SUFFIX: "${{ github.ref_name != 'main' && '-aucgecdkece6b5d7' || '' }}"
   AZURE_SUBSCRIPTION_ID: "${{ github.ref_name == 'main' && secrets.AZURE_SUBSCRIPTION_ID || secrets.AZURE_SUBSCRIPTION_ID_PPROD }}"
 
 jobs:
