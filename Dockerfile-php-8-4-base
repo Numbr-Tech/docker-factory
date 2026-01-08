@@ -5,7 +5,7 @@ FROM php:8.4-fpm
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     make \
-    zip \
+    zip unzip \
     vim \
     git \
     gnupg2 \
