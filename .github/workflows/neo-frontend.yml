@@ -2,10 +2,10 @@ name: CI Neo frontend
 on:
   push:
     branches: [develop]
-  pull_request:
-    branches: [main]
-  schedule:
-    - cron: "30 7 * * 0"
+  # pull_request:
+  #   branches: [main]
+  # schedule:
+  #   - cron: "30 7 * * 0"
   workflow_dispatch:
 
 permissions:
