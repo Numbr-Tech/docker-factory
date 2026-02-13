@@ -9,6 +9,21 @@ on:
       aws-region:
         required: true
         type: string
+      docker-build-args:
+          required: false
+          type: string
+          default: ""
+      docker-context:
+          required: false
+          type: string
+          default: .
+      docker-target:
+          required: false
+          type: string
+          default: ""
+      docker-tag:
+          required: false
+          type: string
     secrets:
       aws-oidc-role:
         required: true
