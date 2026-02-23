@@ -1,5 +1,5 @@
 # Use specific platform for CI compatibility
-FROM php:8.2-cli
+FROM php:8.2-cli-bullseye
 
 # Install system dependencies with CI optimizations
 RUN apt-get update && \
