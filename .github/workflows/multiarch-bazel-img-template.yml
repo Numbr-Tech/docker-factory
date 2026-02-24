@@ -9,6 +9,18 @@ on:
       aws-region:
         required: true
         type: string
+      docker-build-args:
+          required: false
+          type: string
+          default: ""
+      docker-context:
+          required: false
+          type: string
+          default: .
+      docker-target:
+          required: false
+          type: string
+          default: ""
       docker-tag:
           required: false
           type: string
@@ -21,20 +33,6 @@ permissions:
   contents: read
 
 jobs:
-  set-vars:
-    runs-on: ubuntu-latest
-    outputs:
-      base-tag: ${{ steps.set-tag.outputs.base-tag }}
-    steps:
-      - name: Define Docker tag
-        id: set-tag
-        run: |
-          if [ -n "${{ inputs.docker-tag }}" ]; then
-            echo "base-tag=${{ inputs.docker-tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "base-tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
-          fi
-
   build-push-neo-images:
     strategy:
       matrix:
@@ -66,7 +64,7 @@ jobs:
         id: set-vars
         run: |
           echo "SOURCE_IMAGE=${{ inputs.project }}-${{ matrix.app }}" >> "$GITHUB_ENV"
-          echo "IMAGE_TAG=${{ matrix.arch }}-${{ needs.set-vars.outputs.base-tag }}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${{ matrix.arch }}-${{ github.sha }}" >> "$GITHUB_ENV"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -111,8 +109,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ inputs.project }}-${{ matrix.app }}-docker
-          BASE_TAG: ${{ needs.set-vars.outputs.base-tag }}
-
+          BASE_TAG: ${{ github.sha }}
         with:
           inputs: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.BASE_TAG }}
           images: >-
