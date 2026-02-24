@@ -1,0 +1,36 @@
+FROM php:8.2-cli-bullseye
+
+# Install system dependencies with CI optimizations
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    gnupg \
+    libcurl4-openssl-dev \
+    libicu-dev \
+    libpq-dev \
+    libssl-dev \
+    libxml2-dev \
+    libzip-dev \
+    make \
+    pkg-config \
+    vim \
+    zip unzip \
+    ca-certificates && \
+    update-ca-certificates && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install essential PHP extensions
+RUN docker-php-ext-install \
+    ctype \
+    iconv \
+    simplexml \
+    opcache \
+    curl \
+    intl
+
+# Copy PHP configuration
+COPY templates/php-8-4-base/conf.d/50-app.ini /usr/local/etc/php/conf.d/
+
+RUN mkdir -p /var/www/default && chown -R www-data:www-data /var/www/default && chmod -R 755 /var/www/default
