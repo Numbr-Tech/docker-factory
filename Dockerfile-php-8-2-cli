@@ -1,22 +1,21 @@
-# Use specific platform for CI compatibility
 FROM php:8.2-cli-bullseye
 
 # Install system dependencies with CI optimizations
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    make \
-    zip unzip \
-    vim \
-    git \
-    gnupg2 \
     curl \
+    git \
+    gnupg \
+    libcurl4-openssl-dev \
     libicu-dev \
+    libpq-dev \
+    libssl-dev \
     libxml2-dev \
     libzip-dev \
-    libcurl4-openssl-dev \
+    make \
     pkg-config \
-    libssl-dev \
-    libpq-dev \
+    vim \
+    zio unzip \
     ca-certificates && \
     update-ca-certificates && \
     apt-get clean && \
