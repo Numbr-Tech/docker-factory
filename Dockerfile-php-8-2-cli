@@ -15,7 +15,7 @@ RUN apt-get update && \
     make \
     pkg-config \
     vim \
-    zio unzip \
+    zip unzip \
     ca-certificates && \
     update-ca-certificates && \
     apt-get clean && \
