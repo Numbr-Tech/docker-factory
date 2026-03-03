@@ -35,4 +35,9 @@ RUN docker-php-ext-install \
 COPY templates/php-8-4-base/conf.d/50-app.ini /usr/local/etc/php/conf.d/
 COPY templates/php-8-4-base/php-fpm.d/www.conf /usr/local/etc/php-fpm.d/
 
+# OPEN TELEMETRY
+RUN apt-get install gcc make autoconf
+RUN pecl install opentelemetry
+RUN printf '\n[opentelemetry]\nextension=opentelemetry.so\nopentelemetry.auto_instrumentation=1\nopentelemetry.instrumentation=pdo,pgsql\n\n' >> /usr/local/etc/php/conf.d/50-app.ini
+
 RUN mkdir -p /var/www/default && chown -R www-data:www-data /var/www/default && chmod -R 755 /var/www/default
