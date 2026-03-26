@@ -24,6 +24,7 @@ on:
       docker-tag:
           required: false
           type: string
+          default: ""
     secrets:
       aws-oidc-role:
         required: true
@@ -62,9 +63,15 @@ jobs:
 
       - name: Set image variables
         id: set-vars
+        shell: bash
         run: |
+          RAW_TAG="${{ inputs.docker-tag }}"
+          if [ -z "$RAW_TAG" ]; then
+            RAW_TAG="${{ github.sha }}"
+          fi
+          echo "DETERMINED_TAG=$RAW_TAG" >> "$GITHUB_ENV"
           echo "SOURCE_IMAGE=${{ inputs.project }}-${{ matrix.app }}" >> "$GITHUB_ENV"
-          echo "IMAGE_TAG=${{ matrix.arch }}-${{ github.sha }}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${{ matrix.arch }}-$RAW_TAG" >> "$GITHUB_ENV"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -79,7 +86,7 @@ jobs:
 
       - name: Push Bazel-built image to ECR
         run: |
-          IMAGE_NAME="${{ steps.login-ecr.outputs.registry }}/${{ env.SOURCE_IMAGE }}-docker:${{ env.IMAGE_TAG }}"
+          IMAGE_NAME="${{ steps.login-ecr.outputs.registry }}/${{ inputs.project }}-${{ matrix.app }}-docker:${{ env.IMAGE_TAG }}"
           docker tag "${{ env.SOURCE_IMAGE }}" "$IMAGE_NAME"
           docker push "$IMAGE_NAME"
 
@@ -87,7 +94,6 @@ jobs:
     name: Create and push Docker manifests
     needs: build-push-neo-images
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         app: [api, core]
@@ -104,15 +110,15 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Create and push manifest with Noelware
+      - name: Create and push manifest
         uses: Noelware/docker-manifest-action@0.4.3
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ inputs.project }}-${{ matrix.app }}-docker
-          BASE_TAG: ${{ github.sha }}
+          FINAL_TAG: ${{ inputs.docker-tag != '' && inputs.docker-tag || github.sha }}
         with:
-          inputs: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.BASE_TAG }}
+          inputs: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.FINAL_TAG }}
           images: >-
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:amd-${{ env.BASE_TAG }},
-            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:arm-${{ env.BASE_TAG }}
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:amd-${{ env.FINAL_TAG }},
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:arm-${{ env.FINAL_TAG }}
           push: true
